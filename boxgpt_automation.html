@@ -1,0 +1,912 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BoxGPT: Embodied Data Intelligence</title>
+    <style>
+        :root {
+            --max-demo: 900px;
+            --border: 3px solid #000;
+        }
+
+        body {
+            margin: 0;
+            padding: 16px;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+            background: #fff;
+            color: #111;
+        }
+
+        h2 {
+            margin: 0 0 6px;
+            font-size: 20px;
+        }
+
+        h3 {
+            margin: 0 0 12px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        a {
+            color: inherit;
+        }
+
+        .demo-shell {
+            width: min(100%, var(--max-demo));
+            margin: 0 auto;
+        }
+
+        .stage {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            border: var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            touch-action: none;
+            background: #fff;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .camera-view {
+            position: absolute;
+            border: 3px solid #000;
+            box-sizing: border-box;
+            pointer-events: none;
+            overflow: hidden;
+            background: transparent;
+        }
+
+        /* #toggleAutomationButton {
+            color: red;
+            border-color: red;
+        } */
+
+        .button-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        button {
+            appearance: none;
+            border: 2px solid #000;
+            background: #fff;
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .hint {
+            margin-top: 10px;
+            font-size: 13px;
+            color: #333;
+            line-height: 1.4;
+            text-align: justify;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="demo-shell">
+        <h2>BoxGPT: Embodied Data Intelligence</h2>
+
+        <div class="stage" id="env-container" aria-label="Interactive rectangle sensing environment">
+            <canvas id="offscreenCanvas" width="640" height="640" style="display:none;"></canvas>
+            <canvas id="envCanvas"></canvas>
+            <div class="camera-view" id="cameraView">
+                <canvas id="cameraCanvas"></canvas>
+            </div>
+        </div>
+
+        <div class="button-row">
+            <button id="randomizeEnv">Reset</button>
+            <button id="toggleBgButton">Show Ground Truth</button>
+            <button id="toggleAutomationButton">Enable Automation</button>
+        </div>
+
+        <div class="hint">
+            <strong>Move your mouse (or finger) to control a binary sensor.</strong> The red boxes are samples from a
+            generative model of hidden boxes learned
+            from the sensor data. You can also enable automation to let an ergodic controller drive the sensor
+            automatically.
+            <strong>How would you automate the decision-making of such data collection processes?</strong>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // Basic demo settings
+        // ============================================================
+        const envSize = 640;
+        let camSize = 64;
+        let numSamples = 4;
+        let sensorUncertainty = 0.5;
+
+        const trackingSpeed = 0.2;
+        const maxSensorDots = 1000;
+        const sensorSampleInterval = 100;           // 5 Hz sensing
+        const candidateEstimationInterval = 100;    // 10 Hz candidate refresh
+        const controllerStepInterval = 10;         // 10 Hz outer ergodic step
+
+        // ============================================================
+        // DOM
+        // ============================================================
+        const offscreenCanvas = document.getElementById("offscreenCanvas");
+        const offscreenCtx = offscreenCanvas.getContext("2d");
+        const envCanvas = document.getElementById("envCanvas");
+        const envCtx = envCanvas.getContext("2d");
+        const cameraView = document.getElementById("cameraView");
+        const cameraCanvas = document.getElementById("cameraCanvas");
+        const cameraCtx = cameraCanvas.getContext("2d");
+        const container = document.getElementById("env-container");
+        const randomizeButton = document.getElementById("randomizeEnv");
+        const toggleBgButton = document.getElementById("toggleBgButton");
+        const toggleAutomationButton = document.getElementById("toggleAutomationButton");
+        toggleAutomationButton.style.color = "red";
+        toggleAutomationButton.style.borderColor = "red";
+
+        let showBackground = false;
+        let automationEnabled = false;
+
+        // ============================================================
+        // Responsive scaling
+        // ============================================================
+        let cssSize = envSize;
+        let cssScale = 1;
+        let dpr = window.devicePixelRatio || 1;
+
+        // ============================================================
+        // State
+        // ============================================================
+        let rect = null;
+        let cameraX = envSize / 2;   // sensor center x in env coords
+        let cameraY = envSize / 2;   // sensor center y in env coords
+        let camX = envSize / 2;      // sensor top-left x in env coords
+        let camY = envSize / 2;      // sensor top-left y in env coords
+        let targetX = cameraX;       // human target x
+        let targetY = cameraY;       // human target y
+
+        let sensorDots = [];         // { globalX, globalY, dotRadius, fillColor }
+        let candidateBoxes = [];     // { x, y, width, height }
+
+        let lastSensorSampleTime = 0;
+        let lastCandidateEstimationTime = 0;
+        let lastControllerStepTime = 0;
+
+        // ============================================================
+        // Utility
+        // ============================================================
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+
+        function clampSensorCenter() {
+            const minCx = camSize / 2;
+            const maxCx = envSize - camSize / 2 - 5;
+            const minCy = camSize / 2;
+            const maxCy = envSize - camSize / 2 - 5;
+            cameraX = clamp(cameraX, minCx, maxCx);
+            cameraY = clamp(cameraY, minCy, maxCy);
+        }
+
+        function getSensorCenterNorm() {
+            return [cameraX / envSize, cameraY / envSize];
+        }
+
+        function updateAutomationButtonText() {
+            toggleAutomationButton.textContent = automationEnabled ? "Disable Automation" : "Enable Automation";
+        }
+
+        // ============================================================
+        // Ergodic controller state
+        // ============================================================
+        const controller = {
+            numGrid: 100,
+            numK: 15,
+            dx: 0,
+            grids: null,      // flat [x0, y0, x1, y1, ...] normalized
+            gridsX: null,
+            gridsY: null,
+            ksX: null,
+            ksY: null,
+            hks: null,
+            lamks: null,
+            fkGrids: null,    // flat [grid0*k0, grid0*k1, ..., grid1*k0, ...]
+            cks: null,
+            phiks: null,
+            tgtDistr: null,
+            ergDt: 0.01,
+            outerDt: 0.1,
+            ergT: 0.0,
+            maxVelocityNorm: 0.02
+        };
+
+        function initErgodicController() {
+            const numGrid = controller.numGrid;
+            const numK = controller.numK;
+            const dx = 1.0 / numGrid;
+            controller.dx = dx;
+
+            const numPts = numGrid * numGrid;
+            const numModes = numK * numK;
+
+            controller.grids = new Float64Array(numPts * 2);
+            controller.gridsX = new Float64Array(numPts);
+            controller.gridsY = new Float64Array(numPts);
+
+            let idx = 0;
+            for (let iy = 0; iy < numGrid; iy++) {
+                const y = iy / (numGrid - 1);
+                for (let ix = 0; ix < numGrid; ix++) {
+                    const x = ix / (numGrid - 1);
+                    controller.grids[2 * idx] = x;
+                    controller.grids[2 * idx + 1] = y;
+                    controller.gridsX[idx] = x;
+                    controller.gridsY[idx] = y;
+                    idx++;
+                }
+            }
+
+            controller.ksX = new Float64Array(numModes);
+            controller.ksY = new Float64Array(numModes);
+            controller.hks = new Float64Array(numModes);
+            controller.lamks = new Float64Array(numModes);
+
+            let kidx = 0;
+            for (let ky = 0; ky < numK; ky++) {
+                for (let kx = 0; kx < numK; kx++) {
+                    controller.ksX[kidx] = kx;
+                    controller.ksY[kidx] = ky;
+                    controller.lamks[kidx] = Math.pow(1.0 + Math.hypot(kx, ky), -1.5);
+                    kidx++;
+                }
+            }
+
+            const fkGridsRaw = new Float64Array(numPts * numModes);
+            for (let i = 0; i < numPts; i++) {
+                const x = controller.grids[2 * i];
+                const y = controller.grids[2 * i + 1];
+                for (let k = 0; k < numModes; k++) {
+                    const kx = controller.ksX[k];
+                    const ky = controller.ksY[k];
+                    fkGridsRaw[i * numModes + k] = Math.cos(Math.PI * kx * x) * Math.cos(Math.PI * ky * y);
+                }
+            }
+
+            for (let k = 0; k < numModes; k++) {
+                let sumSq = 0.0;
+                for (let i = 0; i < numPts; i++) {
+                    const v = fkGridsRaw[i * numModes + k];
+                    sumSq += v * v;
+                }
+                controller.hks[k] = Math.sqrt(sumSq * dx * dx);
+            }
+
+            controller.fkGrids = new Float64Array(numPts * numModes);
+            for (let i = 0; i < numPts; i++) {
+                for (let k = 0; k < numModes; k++) {
+                    controller.fkGrids[i * numModes + k] = fkGridsRaw[i * numModes + k] / controller.hks[k];
+                }
+            }
+
+            controller.cks = new Float64Array(numModes);
+            controller.phiks = new Float64Array(numModes);
+            controller.tgtDistr = new Float64Array(numPts);
+        }
+
+        function resetControllerState() {
+            controller.cks.fill(0.0);
+            controller.phiks.fill(0.0);
+            controller.tgtDistr.fill(0.0);
+            controller.ergT = 0.0;
+        }
+
+        function getNormalizedCandidateRects() {
+            const rects = [];
+            for (const box of candidateBoxes) {
+                rects.push([
+                    box.x / envSize,
+                    box.y / envSize,
+                    (box.x + box.width) / envSize,
+                    (box.y + box.height) / envSize
+                ]);
+            }
+            return rects;
+        }
+
+        function updateDistrFromRects(rectangles) {
+            const numPts = controller.numGrid * controller.numGrid;
+            const numModes = controller.numK * controller.numK;
+            const dx = controller.dx;
+            const pdfValues = new Float64Array(numPts);
+            const phiks = new Float64Array(numModes);
+
+            if (!rectangles || rectangles.length === 0) {
+                pdfValues.fill(1.0);
+                let total = numPts * dx * dx;
+                for (let i = 0; i < numPts; i++) {
+                    pdfValues[i] /= total;
+                }
+                for (let k = 0; k < numModes; k++) {
+                    let sum = 0.0;
+                    for (let i = 0; i < numPts; i++) {
+                        sum += controller.fkGrids[i * numModes + k] * pdfValues[i];
+                    }
+                    phiks[k] = sum * dx * dx;
+                }
+                return { pdfValues, phiks };
+            }
+
+            let entropyMass = 0.0;
+            for (let i = 0; i < numPts; i++) {
+                const x = controller.grids[2 * i];
+                const y = controller.grids[2 * i + 1];
+
+                let insideCount = 0;
+                for (let r = 0; r < rectangles.length; r++) {
+                    const left = rectangles[r][0];
+                    const bottom = rectangles[r][1];
+                    const right = rectangles[r][2];
+                    const top = rectangles[r][3];
+                    if (x >= left && x <= right && y >= bottom && y <= top) {
+                        insideCount++;
+                    }
+                }
+
+                const p = insideCount / rectangles.length;
+                let h = 0.0;
+                if (p > 0.0 && p < 1.0) {
+                    h = -p * Math.log(p) - (1.0 - p) * Math.log(1.0 - p);
+                }
+                pdfValues[i] = h;
+                entropyMass += h;
+            }
+
+            entropyMass *= dx * dx;
+
+            if (Math.abs(entropyMass) < 1e-6) {
+                pdfValues.fill(1.0);
+                entropyMass = numPts * dx * dx;
+            }
+
+            for (let i = 0; i < numPts; i++) {
+                pdfValues[i] /= entropyMass;
+            }
+
+            for (let k = 0; k < numModes; k++) {
+                let sum = 0.0;
+                for (let i = 0; i < numPts; i++) {
+                    sum += controller.fkGrids[i * numModes + k] * pdfValues[i];
+                }
+                phiks[k] = sum * dx * dx;
+            }
+
+            return { pdfValues, phiks };
+        }
+
+        function evaluateBasisAtPoint(pointNorm) {
+            const numModes = controller.numK * controller.numK;
+            const out = new Float64Array(numModes);
+            const x = pointNorm[0];
+            const y = pointNorm[1];
+
+            for (let k = 0; k < numModes; k++) {
+                const kx = controller.ksX[k];
+                const ky = controller.ksY[k];
+                out[k] = Math.cos(Math.PI * kx * x) * Math.cos(Math.PI * ky * y) / controller.hks[k];
+            }
+            return out;
+        }
+
+        function accumulateTrajectoryStats(pointNorm, dt) {
+            const fk = evaluateBasisAtPoint(pointNorm);
+            for (let k = 0; k < fk.length; k++) {
+                controller.cks[k] += dt * fk[k];
+            }
+            controller.ergT += dt;
+        }
+
+        function pullToCentre(x, alpha = 50, c = 0.02) {
+            const c1 = c;
+            const c2 = 1.0 - c1;
+            const weight = [0, 0];
+            const dx = [0, 0];
+
+            for (let i = 0; i < 2; i++) {
+                weight[i] =
+                    Math.tanh(alpha * (x[i] - c1)) / 2 +
+                    Math.tanh(alpha * (c2 - x[i])) / 2;
+                dx[i] =
+                    -Math.tanh(alpha * (x[i] - c1)) / 2 +
+                    Math.tanh(alpha * (c2 - x[i])) / 2;
+            }
+            return { weight, dx };
+        }
+
+        function planErgodicAction(sensorPosNorm) {
+            const numModes = controller.numK * controller.numK;
+            const ergDt = controller.ergDt;
+            const outerDt = controller.outerDt;
+            const steps = Math.max(1, Math.round(outerDt / ergDt));
+            const maxVel = controller.maxVelocityNorm;
+
+            const xt = [sensorPosNorm[0], sensorPosNorm[1]];
+            const cksRollout = controller.cks.slice();
+            const phiks = controller.phiks;
+            let t = controller.ergT;
+
+            const minCenterNormX = (camSize / 2) / envSize;
+            const maxCenterNormX = (envSize - camSize / 2 - 5) / envSize;
+            const minCenterNormY = (camSize / 2) / envSize;
+            const maxCenterNormY = (envSize - camSize / 2 - 5) / envSize;
+
+            for (let step = 0; step < steps; step++) {
+                const fkXt = new Float64Array(numModes);
+
+                for (let k = 0; k < numModes; k++) {
+                    const kx = controller.ksX[k];
+                    const ky = controller.ksY[k];
+                    fkXt[k] = Math.cos(Math.PI * kx * xt[0]) * Math.cos(Math.PI * ky * xt[1]) / controller.hks[k];
+                    cksRollout[k] += ergDt * fkXt[k];
+                }
+
+                let bt0 = 0.0;
+                let bt1 = 0.0;
+
+                for (let k = 0; k < numModes; k++) {
+                    const kx = controller.ksX[k];
+                    const ky = controller.ksY[k];
+                    const h = controller.hks[k];
+
+                    const gradX = -Math.PI * kx * Math.sin(Math.PI * kx * xt[0]) * Math.cos(Math.PI * ky * xt[1]) / h;
+                    const gradY = -Math.PI * ky * Math.cos(Math.PI * kx * xt[0]) * Math.sin(Math.PI * ky * xt[1]) / h;
+
+                    const mismatch = controller.lamks[k] * ((cksRollout[k] / (t + ergDt)) - phiks[k]);
+                    bt0 += mismatch * gradX;
+                    bt1 += mismatch * gradY;
+                }
+
+                const btNorm = Math.hypot(bt0, bt1) + 1e-6;
+                let u0 = -maxVel * bt0 / btNorm;
+                let u1 = -maxVel * bt1 / btNorm;
+
+                const pull = pullToCentre(xt, 20, 0.02);
+                let cp0 = pull.dx[0];
+                let cp1 = pull.dx[1];
+                const cpNorm = Math.hypot(cp0, cp1) + 1e-6;
+                cp0 = maxVel * cp0 / cpNorm;
+                cp1 = maxVel * cp1 / cpNorm;
+
+                u0 = u0 * pull.weight[0] + cp0 * (1.0 - pull.weight[0]);
+                u1 = u1 * pull.weight[1] + cp1 * (1.0 - pull.weight[1]);
+
+                xt[0] += ergDt * u0;
+                xt[1] += ergDt * u1;
+
+                xt[0] = clamp(xt[0], minCenterNormX, maxCenterNormX);
+                xt[1] = clamp(xt[1], minCenterNormY, maxCenterNormY);
+
+                t += ergDt;
+            }
+
+            accumulateTrajectoryStats(sensorPosNorm, outerDt);
+
+            let ax = xt[0] - sensorPosNorm[0];
+            let ay = xt[1] - sensorPosNorm[1];
+            const aNorm = Math.hypot(ax, ay) + 1e-6;
+            ax = maxVel * ax / aNorm;
+            ay = maxVel * ay / aNorm;
+
+            return [ax, ay];
+        }
+
+        // ============================================================
+        // Responsive sizing
+        // ============================================================
+        function resizeToContainer() {
+            cssSize = Math.max(200, Math.floor(container.clientWidth));
+            cssScale = envSize / cssSize;
+            dpr = window.devicePixelRatio || 1;
+
+            envCanvas.style.width = cssSize + "px";
+            envCanvas.style.height = cssSize + "px";
+            envCanvas.width = Math.floor(cssSize * dpr);
+            envCanvas.height = Math.floor(cssSize * dpr);
+
+            envCtx.setTransform((dpr * cssSize) / envSize, 0, 0, (dpr * cssSize) / envSize, 0, 0);
+
+            offscreenCanvas.width = envSize;
+            offscreenCanvas.height = envSize;
+        }
+
+        window.addEventListener("resize", () => {
+            resizeToContainer();
+            updateCameraView();
+        });
+
+        // ============================================================
+        // Environment generation
+        // ============================================================
+        function generateEnvironment() {
+            offscreenCtx.fillStyle = "#F0F0F0";
+            offscreenCtx.fillRect(0, 0, envSize, envSize);
+
+            const minHalfWidth = 25;
+            const minHalfHeight = 25;
+
+            const centerX = Math.random() * (envSize - 2 * minHalfWidth) + minHalfWidth;
+            const centerY = Math.random() * (envSize - 2 * minHalfHeight) + minHalfHeight;
+
+            const maxHalfWidth = Math.min(centerX, envSize - centerX);
+            const maxHalfHeight = Math.min(centerY, envSize - centerY);
+
+            const halfWidth = Math.random() * (maxHalfWidth - minHalfWidth) + minHalfWidth;
+            const halfHeight = Math.random() * (maxHalfHeight - minHalfHeight) + minHalfHeight;
+
+            rect = {
+                x: centerX - halfWidth,
+                y: centerY - halfHeight,
+                width: 2 * halfWidth,
+                height: 2 * halfHeight
+            };
+
+            offscreenCtx.fillStyle = "grey";
+            offscreenCtx.fillRect(rect.x, rect.y, rect.width, rect.height);
+
+            sensorDots = [];
+            candidateBoxes = [];
+            resetControllerState();
+        }
+
+        // ============================================================
+        // Drawing
+        // ============================================================
+        function refreshMainCanvas() {
+            if (showBackground) {
+                envCtx.drawImage(offscreenCanvas, 0, 0);
+            } else {
+                envCtx.clearRect(0, 0, envSize, envSize);
+                envCtx.fillStyle = "white";
+                envCtx.fillRect(0, 0, envSize, envSize);
+            }
+
+            sensorDots.forEach(dot => {
+                envCtx.beginPath();
+                envCtx.arc(dot.globalX, dot.globalY, dot.dotRadius, 0, 2 * Math.PI);
+                envCtx.fillStyle = dot.fillColor;
+                envCtx.fill();
+                envCtx.strokeStyle = "black";
+                envCtx.stroke();
+            });
+
+            candidateBoxes.forEach(box => {
+                envCtx.beginPath();
+                envCtx.lineWidth = 2;
+                envCtx.strokeStyle = "red";
+                envCtx.rect(box.x, box.y, box.width, box.height);
+                envCtx.stroke();
+            });
+        }
+
+        // ============================================================
+        // Camera overlay
+        // ============================================================
+        function updateCameraView() {
+            clampSensorCenter();
+
+            camX = clamp(cameraX - camSize / 2, 0, envSize - camSize - 5);
+            camY = clamp(cameraY - camSize / 2, 0, envSize - camSize - 5);
+
+            const camCss = camSize / cssScale;
+            cameraView.style.width = camCss + "px";
+            cameraView.style.height = camCss + "px";
+            cameraView.style.left = (camX / cssScale) + "px";
+            cameraView.style.top = (camY / cssScale) + "px";
+
+            cameraCanvas.style.width = camCss + "px";
+            cameraCanvas.style.height = camCss + "px";
+            cameraCanvas.width = Math.floor(camCss * dpr);
+            cameraCanvas.height = Math.floor(camCss * dpr);
+
+            cameraCtx.setTransform(dpr / cssScale, 0, 0, dpr / cssScale, 0, 0);
+            cameraCtx.clearRect(0, 0, camSize, camSize);
+        }
+
+        // ============================================================
+        // Sensor sampling
+        // ============================================================
+        function sampleSensorPoints() {
+            const dotRadius = 4;
+            for (let i = 0; i < numSamples; i++) {
+                if (Math.random() >= 1.0 - sensorUncertainty) continue;
+
+                const localX = Math.random() * camSize;
+                const localY = Math.random() * camSize;
+                const globalX = camX + localX;
+                const globalY = camY + localY;
+
+                let insideRect = false;
+                if (rect) {
+                    if (
+                        globalX >= rect.x && globalX <= rect.x + rect.width &&
+                        globalY >= rect.y && globalY <= rect.y + rect.height
+                    ) {
+                        insideRect = true;
+                    }
+                }
+
+                const fillColor = insideRect ? "black" : "white";
+
+                cameraCtx.beginPath();
+                cameraCtx.arc(localX, localY, dotRadius, 0, 2 * Math.PI);
+                cameraCtx.fillStyle = fillColor;
+                cameraCtx.fill();
+                cameraCtx.strokeStyle = "black";
+                cameraCtx.stroke();
+
+                sensorDots.push({ globalX, globalY, dotRadius, fillColor });
+            }
+
+            if (sensorDots.length > maxSensorDots) {
+                sensorDots = sensorDots.sort(() => Math.random() - 0.5).slice(0, maxSensorDots);
+            }
+        }
+
+        // ============================================================
+        // Candidate rectangle estimation
+        // ============================================================
+        function estimateCandidateRectangles() {
+            candidateBoxes = [];
+            const minSize = 50;
+
+            const blackDots = sensorDots.filter(dot => dot.fillColor === "black");
+            const whiteDots = sensorDots.filter(dot => dot.fillColor === "white");
+
+            function containsWhite(box) {
+                return whiteDots.some(dot =>
+                    dot.globalX > box.x && dot.globalX < box.x + box.width &&
+                    dot.globalY > box.y && dot.globalY < box.y + box.height
+                );
+            }
+
+            if (blackDots.length > 0) {
+                const blackMinX = Math.min(...blackDots.map(dot => dot.globalX));
+                const blackMaxX = Math.max(...blackDots.map(dot => dot.globalX));
+                const blackMinY = Math.min(...blackDots.map(dot => dot.globalY));
+                const blackMaxY = Math.max(...blackDots.map(dot => dot.globalY));
+
+                const whiteLeft = whiteDots.filter(dot =>
+                    dot.globalX < blackMinX &&
+                    dot.globalY >= blackMinY && dot.globalY <= blackMaxY
+                );
+                const leftLower = whiteLeft.length > 0 ? Math.max(...whiteLeft.map(dot => dot.globalX)) : 0;
+                const leftUpper = blackMinX;
+
+                const whiteRight = whiteDots.filter(dot =>
+                    dot.globalX > blackMaxX &&
+                    dot.globalY >= blackMinY && dot.globalY <= blackMaxY
+                );
+                const rightLower = blackMaxX;
+                const rightUpper = whiteRight.length > 0 ? Math.min(...whiteRight.map(dot => dot.globalX)) : envSize;
+
+                const whiteTop = whiteDots.filter(dot =>
+                    dot.globalY < blackMinY &&
+                    dot.globalX >= blackMinX && dot.globalX <= blackMaxX
+                );
+                const topLower = whiteTop.length > 0 ? Math.max(...whiteTop.map(dot => dot.globalY)) : 0;
+                const topUpper = blackMinY;
+
+                const whiteBottom = whiteDots.filter(dot =>
+                    dot.globalY > blackMaxY &&
+                    dot.globalX >= blackMinX && dot.globalX <= blackMaxX
+                );
+                const bottomLower = blackMaxY;
+                const bottomUpper = whiteBottom.length > 0 ? Math.min(...whiteBottom.map(dot => dot.globalY)) : envSize;
+
+                const maxAttempts = 20;
+                for (let i = 0; i < 10; i++) {
+                    let candidate;
+                    let attempts = 0;
+                    while (attempts < maxAttempts) {
+                        const L = leftLower + Math.random() * (leftUpper - leftLower);
+                        const R = rightLower + Math.random() * (rightUpper - rightLower);
+                        const T = topLower + Math.random() * (topUpper - topLower);
+                        const B = bottomLower + Math.random() * (bottomUpper - bottomLower);
+                        candidate = { x: L, y: T, width: R - L, height: B - T };
+
+                        if (
+                            candidate.x <= blackMinX &&
+                            candidate.x + candidate.width >= blackMaxX &&
+                            candidate.y <= blackMinY &&
+                            candidate.y + candidate.height >= blackMaxY
+                        ) {
+                            if (!containsWhite(candidate)) {
+                                candidateBoxes.push(candidate);
+                                break;
+                            }
+                        }
+                        attempts++;
+                    }
+                }
+            } else {
+                const maxAttempts = 20;
+                for (let i = 0; i < 10; i++) {
+                    let candidate;
+                    let attempts = 0;
+                    while (attempts < maxAttempts) {
+                        const L = Math.random() * (envSize - minSize);
+                        const R = L + minSize + Math.random() * (envSize - L - minSize);
+                        const T = Math.random() * (envSize - minSize);
+                        const B = T + minSize + Math.random() * (envSize - T - minSize);
+                        candidate = { x: L, y: T, width: R - L, height: B - T };
+                        if (!containsWhite(candidate)) {
+                            candidateBoxes.push(candidate);
+                            break;
+                        }
+                        attempts++;
+                    }
+                }
+            }
+        }
+
+        // ============================================================
+        // Input mapping
+        // ============================================================
+        function setTargetFromClientXY(clientX, clientY) {
+            if (automationEnabled) return;
+
+            const bounds = container.getBoundingClientRect();
+            const xCss = clientX - bounds.left;
+            const yCss = clientY - bounds.top;
+
+            const xClamped = clamp(xCss, 0, cssSize);
+            const yClamped = clamp(yCss, 0, cssSize);
+
+            targetX = xClamped * cssScale;
+            targetY = yClamped * cssScale;
+        }
+
+        container.addEventListener("mousemove", (event) => {
+            setTargetFromClientXY(event.clientX, event.clientY);
+        });
+
+        container.addEventListener("touchstart", (event) => {
+            event.preventDefault();
+            if (event.touches && event.touches[0]) {
+                setTargetFromClientXY(event.touches[0].clientX, event.touches[0].clientY);
+            }
+        }, { passive: false });
+
+        container.addEventListener("touchmove", (event) => {
+            event.preventDefault();
+            if (event.touches && event.touches[0]) {
+                setTargetFromClientXY(event.touches[0].clientX, event.touches[0].clientY);
+            }
+        }, { passive: false });
+
+        // ============================================================
+        // Human / automation switching
+        // ============================================================
+        function updateMotionAndController(timestamp) {
+            if (automationEnabled) {
+                if (timestamp - lastControllerStepTime >= controllerStepInterval) {
+                    const sensorPosNorm = getSensorCenterNorm();
+                    const rectsNorm = getNormalizedCandidateRects();
+                    const distr = updateDistrFromRects(rectsNorm);
+
+                    controller.tgtDistr = distr.pdfValues;
+                    controller.phiks = distr.phiks;
+
+                    const actionNorm = planErgodicAction(sensorPosNorm);
+                    cameraX += actionNorm[0] * envSize;
+                    cameraY += actionNorm[1] * envSize;
+                    clampSensorCenter();
+
+                    lastControllerStepTime = timestamp;
+                }
+            } else {
+                cameraX += (targetX - cameraX) * trackingSpeed;
+                cameraY += (targetY - cameraY) * trackingSpeed;
+                clampSensorCenter();
+
+                if (timestamp - lastControllerStepTime >= controllerStepInterval) {
+                    accumulateTrajectoryStats(getSensorCenterNorm(), controller.outerDt);
+                    lastControllerStepTime = timestamp;
+                }
+            }
+        }
+
+        // ============================================================
+        // Buttons
+        // ============================================================
+        randomizeButton.addEventListener("click", () => {
+            generateEnvironment();
+            refreshMainCanvas();
+            updateCameraView();
+        });
+
+        toggleBgButton.addEventListener("click", () => {
+            showBackground = !showBackground;
+            toggleBgButton.textContent = showBackground ? "Hide Ground Truth" : "Show Ground Truth";
+            refreshMainCanvas();
+        });
+
+        // toggleAutomationButton.addEventListener("click", () => {
+        //     automationEnabled = !automationEnabled;
+        //     updateAutomationButtonText();
+
+        //     // Prevent any jump when switching modes.
+        //     targetX = cameraX;
+        //     targetY = cameraY;
+        //     lastControllerStepTime = performance.now();
+        // });
+        toggleAutomationButton.addEventListener("click", () => {
+            automationEnabled = !automationEnabled;
+
+            updateAutomationButtonText();
+
+            if (automationEnabled) {
+                // Now showing "Disable Automation" → normal style
+                toggleAutomationButton.style.color = "";
+                toggleAutomationButton.style.borderColor = "";
+            } else {
+                // Now showing "Enable Automation" → highlight red
+                toggleAutomationButton.style.color = "red";
+                toggleAutomationButton.style.borderColor = "red";
+            }
+
+            targetX = cameraX;
+            targetY = cameraY;
+            lastControllerStepTime = performance.now();
+        });
+
+        // ============================================================
+        // Main loop
+        // ============================================================
+        function animate(timestamp) {
+            updateMotionAndController(timestamp);
+            refreshMainCanvas();
+            updateCameraView();
+
+            if (timestamp - lastSensorSampleTime >= sensorSampleInterval) {
+                sampleSensorPoints();
+                lastSensorSampleTime = timestamp;
+            }
+
+            if (timestamp - lastCandidateEstimationTime >= candidateEstimationInterval) {
+                estimateCandidateRectangles();
+                lastCandidateEstimationTime = timestamp;
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // ============================================================
+        // Startup
+        // ============================================================
+        initErgodicController();
+        resizeToContainer();
+        generateEnvironment();
+        updateAutomationButtonText();
+        refreshMainCanvas();
+        updateCameraView();
+        requestAnimationFrame(animate);
+    </script>
+</body>
+
+</html>
