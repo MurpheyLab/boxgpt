@@ -153,9 +153,9 @@
         let numSamples = 4;
         let sensorUncertainty = 0.5;
 
-        const trackingSpeed = 0.2;
+        const manualResponseRate = 12;
         const maxSensorDots = 1000;
-        const sensorSampleInterval = 100;           // 5 Hz sensing
+        const sensorSampleInterval = 100;           // 10 Hz sensing
         const candidateEstimationInterval = 100;    // 10 Hz candidate refresh
         const controllerStepInterval = 10;         // 10 Hz outer ergodic step
 
@@ -218,6 +218,8 @@
         let lastSensorSampleTime = 0;
         let lastCandidateEstimationTime = 0;
         let lastControllerStepTime = 0;
+        let previousAnimationTime = null;
+        let automationVelocity = [0, 0];
 
         // ============================================================
         // Utility
@@ -262,9 +264,9 @@
             phiks: null,
             tgtDistr: null,
             ergDt: 0.01,
-            outerDt: 0.1,
+            outerDt: 0.01,
             ergT: 0.0,
-            maxVelocityNorm: 0.02
+            maxVelocityNorm: 0.5
         };
 
         function initErgodicController() {
@@ -364,8 +366,8 @@
             const numPts = controller.numGrid * controller.numGrid;
             const numModes = controller.numK * controller.numK;
             const dx = controller.dx;
-            const pdfValues = new Float64Array(numPts);
-            const phiks = new Float64Array(numModes);
+            const pdfValues = controller.tgtDistr;
+            const phiks = controller.phiks;
 
             if (!rectangles || rectangles.length === 0) {
                 pdfValues.fill(1.0);
@@ -380,7 +382,7 @@
                     }
                     phiks[k] = sum * dx * dx;
                 }
-                return { pdfValues, phiks };
+                return;
             }
 
             let entropyMass = 0.0;
@@ -427,7 +429,6 @@
                 phiks[k] = sum * dx * dx;
             }
 
-            return { pdfValues, phiks };
         }
 
         function evaluateBasisAtPoint(pointNorm) {
@@ -601,6 +602,7 @@
 
             sensorDots = [];
             candidateBoxes = [];
+            automationVelocity = [0, 0];
             resetControllerState();
         }
 
@@ -664,10 +666,10 @@
         function sampleSensorPoints() {
             const dotRadius = 4;
             for (let i = 0; i < numSamples; i++) {
-                if (Math.random() >= 1.0 - sensorUncertainty) continue;
+                if (rng() >= 1.0 - sensorUncertainty) continue;
 
-                const localX = Math.random() * camSize;
-                const localY = Math.random() * camSize;
+                const localX = rng() * camSize;
+                const localY = rng() * camSize;
                 const globalX = camX + localX;
                 const globalY = camY + localY;
 
@@ -694,7 +696,7 @@
             }
 
             if (sensorDots.length > maxSensorDots) {
-                sensorDots = sensorDots.sort(() => Math.random() - 0.5).slice(0, maxSensorDots);
+                sensorDots = sensorDots.sort(() => rng() - 0.5).slice(0, maxSensorDots);
             }
         }
 
@@ -754,10 +756,10 @@
                     let candidate;
                     let attempts = 0;
                     while (attempts < maxAttempts) {
-                        const L = leftLower + Math.random() * (leftUpper - leftLower);
-                        const R = rightLower + Math.random() * (rightUpper - rightLower);
-                        const T = topLower + Math.random() * (topUpper - topLower);
-                        const B = bottomLower + Math.random() * (bottomUpper - bottomLower);
+                        const L = leftLower + rng() * (leftUpper - leftLower);
+                        const R = rightLower + rng() * (rightUpper - rightLower);
+                        const T = topLower + rng() * (topUpper - topLower);
+                        const B = bottomLower + rng() * (bottomUpper - bottomLower);
                         candidate = { x: L, y: T, width: R - L, height: B - T };
 
                         if (
@@ -780,10 +782,10 @@
                     let candidate;
                     let attempts = 0;
                     while (attempts < maxAttempts) {
-                        const L = Math.random() * (envSize - minSize);
-                        const R = L + minSize + Math.random() * (envSize - L - minSize);
-                        const T = Math.random() * (envSize - minSize);
-                        const B = T + minSize + Math.random() * (envSize - T - minSize);
+                        const L = rng() * (envSize - minSize);
+                        const R = L + minSize + rng() * (envSize - L - minSize);
+                        const T = rng() * (envSize - minSize);
+                        const B = T + minSize + rng() * (envSize - T - minSize);
                         candidate = { x: L, y: T, width: R - L, height: B - T };
                         if (!containsWhite(candidate)) {
                             candidateBoxes.push(candidate);
@@ -833,26 +835,25 @@
         // ============================================================
         // Human / automation switching
         // ============================================================
-        function updateMotionAndController(timestamp) {
+        function updateMotionAndController(timestamp, dt) {
             if (automationEnabled) {
                 if (timestamp - lastControllerStepTime >= controllerStepInterval) {
                     const sensorPosNorm = getSensorCenterNorm();
                     const rectsNorm = getNormalizedCandidateRects();
-                    const distr = updateDistrFromRects(rectsNorm);
+                    updateDistrFromRects(rectsNorm);
 
-                    controller.tgtDistr = distr.pdfValues;
-                    controller.phiks = distr.phiks;
-
-                    const actionNorm = planErgodicAction(sensorPosNorm);
-                    cameraX += actionNorm[0] * envSize;
-                    cameraY += actionNorm[1] * envSize;
-                    clampSensorCenter();
+                    automationVelocity = planErgodicAction(sensorPosNorm);
 
                     lastControllerStepTime = timestamp;
                 }
+
+                cameraX += automationVelocity[0] * envSize * dt;
+                cameraY += automationVelocity[1] * envSize * dt;
+                clampSensorCenter();
             } else {
-                cameraX += (targetX - cameraX) * trackingSpeed;
-                cameraY += (targetY - cameraY) * trackingSpeed;
+                const alpha = 1 - Math.exp(-manualResponseRate * dt);
+                cameraX += (targetX - cameraX) * alpha;
+                cameraY += (targetY - cameraY) * alpha;
                 clampSensorCenter();
 
                 if (timestamp - lastControllerStepTime >= controllerStepInterval) {
@@ -904,6 +905,7 @@
 
             targetX = cameraX;
             targetY = cameraY;
+            automationVelocity = [0, 0];
             lastControllerStepTime = performance.now();
         });
 
@@ -911,7 +913,12 @@
         // Main loop
         // ============================================================
         function animate(timestamp) {
-            updateMotionAndController(timestamp);
+            const dt = previousAnimationTime === null
+                ? 0
+                : Math.min((timestamp - previousAnimationTime) / 1000, 0.1);
+            previousAnimationTime = timestamp;
+
+            updateMotionAndController(timestamp, dt);
             refreshMainCanvas();
             updateCameraView();
 
