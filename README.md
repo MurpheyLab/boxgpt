@@ -14,6 +14,16 @@ You will need implement a feedback control policy given the accumulated signals 
 
 *For an interactive demonstration and more details, visit the [BoxGPT project homepage](https://murpheylab.github.io/boxgpt/).*
 
+
+## Example policies
+
+Each notebook downloads the current `box_gym.py` directly from GitHub and implements its own controller.
+
+- [Random walk](https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/random_walk.ipynb)
+- [Greedy information maximization](https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/greedy_infomax.ipynb)
+- [Ergodic search](https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/ergodic_search.ipynb)
+
+
 ## Using BoxGPT
 
 ### Download
@@ -72,14 +82,6 @@ env = BoxGym(
     candidate_count=200,
 )
 ```
-
-## Example policies
-
-Each notebook downloads the current `box_gym.py` directly from GitHub and implements its own controller.
-
-- [Random walk](https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/random_walk.ipynb)
-- [Greedy information maximization](https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/greedy_infomax.ipynb)
-- [Ergodic search](https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/ergodic_search.ipynb)
 
 ## License
 
