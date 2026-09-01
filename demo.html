@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Standalone interactive BoxGPT demonstration.">
+    <title>BoxGPT Interactive Demo</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+            background: white;
+        }
+
+        .page {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .demo-embed {
+            width: 100%;
+            max-width: 600px;
+            margin: 1.5rem auto;
+        }
+
+        .demo-embed iframe {
+            width: 100%;
+            height: 950px;
+            border: 0;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <div class="demo-embed">
+            <iframe
+                src="boxgpt_automation.html"
+                title="Interactive BoxGPT sensor demo"
+                loading="eager"
+                scrolling="no"
+            ></iframe>
+        </div>
+    </main>
+</body>
+</html>

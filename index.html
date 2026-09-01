@@ -4,7 +4,18 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="BoxGPT is a playground for embodied data collection and active localization.">
-    <title>BoxGPT — Embodied Data Intelligence</title>
+    <title>BoxGPT — Embodied Data Collection</title>
+
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [["\\(", "\\)"]],
+                displayMath: [["\\[", "\\]"]]
+            },
+            svg: { fontCache: "global" }
+        };
+    </script>
+    <script async id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 
     <style>
         :root {
@@ -34,7 +45,7 @@
 
         .intro {
             max-width: 760px;
-            margin: 0 auto 16px;
+            margin: 0 auto 30px;
         }
 
         .eyebrow {
@@ -54,11 +65,58 @@
         }
 
         .lede {
-            max-width: 680px;
+            max-width: 720px;
             margin: 16px 0 0;
             color: var(--muted);
             font-size: 18px;
             line-height: 1.55;
+        }
+
+        .intro-copy {
+            max-width: 720px;
+            margin: 14px 0 0;
+            font-size: 16px;
+            line-height: 1.65;
+        }
+
+        .intro-link {
+            display: inline-block;
+            margin-top: 14px;
+            color: var(--ink);
+            font-weight: 700;
+            text-underline-offset: 3px;
+        }
+
+        .demo-section {
+            max-width: 800px;
+            margin: 0 auto;
+            padding-top: 28px;
+            border-top: 2px solid var(--ink);
+        }
+
+        .demo-copy {
+            max-width: 720px;
+            margin: 10px 0 18px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .demo-key {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 0 0 20px;
+            padding: 0;
+            list-style: none;
+        }
+
+        .demo-key li {
+            padding: 12px 14px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: var(--panel);
+            font-size: 14px;
+            line-height: 1.45;
         }
 
         .demo-embed {
@@ -77,7 +135,7 @@
 
         .resources {
             max-width: 800px;
-            margin: 32px auto 0;
+            margin: 40px auto 0;
             padding-top: 32px;
             border-top: 2px solid var(--ink);
         }
@@ -142,6 +200,35 @@
             margin-top: auto;
         }
 
+        .formulation {
+            max-width: 800px;
+            margin: 44px auto 0;
+            padding-top: 36px;
+            border-top: 2px solid var(--ink);
+        }
+
+        .formulation h2 {
+            max-width: 680px;
+            margin-bottom: 20px;
+        }
+
+        .formulation h3 {
+            margin: 32px 0 10px;
+            font-size: 21px;
+        }
+
+        .formulation p {
+            max-width: 740px;
+            margin: 0 0 16px;
+            line-height: 1.72;
+        }
+
+        .equation {
+            margin: 20px 0;
+            overflow-x: auto;
+            font-size: 1.05rem;
+        }
+
         footer {
             max-width: 800px;
             margin: 44px auto 0;
@@ -168,6 +255,10 @@
                 grid-template-columns: 1fr;
             }
 
+            .demo-key {
+                grid-template-columns: 1fr;
+            }
+
             .notebook-card {
                 min-height: 0;
             }
@@ -177,22 +268,46 @@
 <body>
     <main class="page">
         <header class="intro">
-            <p class="eyebrow">Interactive research playground</p>
+            <p class="eyebrow">Embodied data collection playground</p>
             <h1>BoxGPT</h1>
             <p class="lede">
-                Learn where to collect data. A mobile binary sensor explores an unknown rectangle while a generative
-                model updates its beliefs from every measurement.
+                BoxGPT is a simplified testbed for embodied data collection. A mobile binary sensor moves across a
+                planar space to locate a hidden rectangle. A measurement is positive when sampled from within the
+                rectangle and negative otherwise.
             </p>
+            <p class="intro-copy">
+                From the accumulated signals, BoxGPT infers a distribution of rectangles consistent with the data and
+                quantifies predictive uncertainty across the space. The task is to design a feedback control policy
+                that uses this information while accounting for sequential data collection and motion constraints.
+            </p>
+            <a class="intro-link" href="https://github.com/MurpheyLab/boxgpt" target="_blank" rel="noreferrer">
+                View the Gymnasium environment on GitHub ↗
+            </a>
         </header>
 
-        <div class="demo-embed">
-            <iframe
-                src="boxgpt_automation.html"
-                title="Interactive BoxGPT sensor demo"
-                loading="eager"
-                scrolling="no"
-            ></iframe>
-        </div>
+        <section class="demo-section" aria-labelledby="demo-title">
+            <p class="eyebrow">Interactive demonstration</p>
+            <h2 id="demo-title">Collect data and update the model</h2>
+            <p class="demo-copy">
+                Move your mouse or finger to control the outlined sensor. As it moves, the sensor collects binary
+                measurements and the model updates its inferred rectangles. Use <strong>Show Ground Truth</strong> to
+                reveal the hidden rectangle, or <strong>Enable Automation</strong> to let an ergodic controller drive
+                the sensor. <strong>Reset</strong> starts a new problem.
+            </p>
+            <ul class="demo-key" aria-label="Interactive demo legend">
+                <li><strong>Outlined square</strong><br>Current sensor footprint</li>
+                <li><strong>Black and white points</strong><br>Positive and negative measurements</li>
+                <li><strong>Red rectangles</strong><br>Models consistent with the accumulated data</li>
+            </ul>
+            <div class="demo-embed">
+                <iframe
+                    src="boxgpt_automation.html"
+                    title="Interactive BoxGPT sensor demo"
+                    loading="eager"
+                    scrolling="no"
+                ></iframe>
+            </div>
+        </section>
 
         <section class="resources" aria-labelledby="resources-title">
             <div class="resources-header">
@@ -201,42 +316,180 @@
                     <h2 id="resources-title">Code and notebooks</h2>
                 </div>
                 <a class="source-link" href="https://github.com/MurpheyLab/boxgpt" target="_blank" rel="noreferrer">
-                    View source code ↗
+                    View Gymnasium environment ↗
                 </a>
             </div>
 
             <div class="notebook-grid">
                 <article class="notebook-card">
                     <span class="notebook-number">01</span>
-                    <h3>Uniform goals</h3>
-                    <p>Tour the Gym environment with a sensor that visits uniformly sampled waypoints.</p>
-                    <a class="card-link" href="https://github.com/MurpheyLab/boxgpt/blob/main/notebooks/01_uniform_goals.ipynb" target="_blank" rel="noreferrer">
-                        Open notebook ↗
+                    <h3>Random walk</h3>
+                    <p>Move the sensor between uniformly sampled goals without using model uncertainty.</p>
+                    <a class="card-link" href="https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/random_walk.ipynb" target="_blank" rel="noreferrer">
+                        Open in Colab ↗
                     </a>
                 </article>
 
                 <article class="notebook-card">
                     <span class="notebook-number">02</span>
-                    <h3>Highest uncertainty</h3>
-                    <p>Greedily move to the point where the candidate rectangles disagree most.</p>
-                    <a class="card-link" href="https://github.com/MurpheyLab/boxgpt/blob/main/notebooks/02_highest_uncertainty.ipynb" target="_blank" rel="noreferrer">
-                        Open notebook ↗
+                    <h3>Greedy information maximization</h3>
+                    <p>Move to the point where the inferred rectangles have the highest predictive uncertainty.</p>
+                    <a class="card-link" href="https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/greedy_infomax.ipynb" target="_blank" rel="noreferrer">
+                        Open in Colab ↗
                     </a>
                 </article>
 
                 <article class="notebook-card">
                     <span class="notebook-number">03</span>
-                    <h3>Ergodic coverage</h3>
-                    <p>Match the sensor trajectory to the full spatial uncertainty distribution.</p>
-                    <a class="card-link" href="https://github.com/MurpheyLab/boxgpt/blob/main/notebooks/03_ergodic_controller.ipynb" target="_blank" rel="noreferrer">
-                        Open notebook ↗
+                    <h3>Ergodic search</h3>
+                    <p>Distribute the sensor trajectory according to the full predictive uncertainty distribution.</p>
+                    <a class="card-link" href="https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/ergodic_search.ipynb" target="_blank" rel="noreferrer">
+                        Open in Colab ↗
                     </a>
                 </article>
             </div>
         </section>
 
+        <article class="formulation" aria-labelledby="formulation-title">
+            <p class="eyebrow">Mathematical formulation</p>
+            <h2 id="formulation-title">From model uncertainty to robot actions</h2>
+
+            <p>
+                BoxGPT is a simplification of a general problem in embodied data collection. We are learning a
+                generative model, denoted by \(p(y\mid x;\theta)\), where \(x\) is the state of the robot, \(y\) is
+                the variable of interest and the variable of measurement, and \(\theta\) is the parameter of the
+                model. For example, \(y\) could represent an image in a vision model.
+            </p>
+
+            <h3>Learning from sequentially collected data</h3>
+            <p>
+                The robot moves across the space to collect data. Each data point is denoted by
+                \(d_i=(x_i,y_i)\), and the accumulated dataset is \(D=\{d_i\}_{i=1}^{N}\). Model regression infers a
+                distribution of model parameters, denoted by \(q(\theta\mid D)\), from this dataset. Maximum likelihood
+                estimation can be considered a special case in which this distribution is a Dirac delta function.
+            </p>
+            <p>
+                Given an inferred parameter distribution, the posterior predictive distribution at a robot state
+                \(x\) is
+            </p>
+            <div class="equation">
+                \[
+                \bar p(y\mid x,D)
+                = \mathbb{E}_{\theta\sim q(\theta\mid D)}\!\left[p(y\mid x;\theta)\right].
+                \]
+            </div>
+            <p>
+                We quantify its predictive uncertainty using an information function \(h(x)\):
+            </p>
+            <div class="equation">
+                \[
+                h(x)=\mathbb{H}_{y}\!\left[\bar p(y\mid x,D)\right],
+                \]
+            </div>
+            <p>
+                where \(\mathbb{E}\) denotes expectation and \(\mathbb{H}\) denotes entropy. The information function
+                describes how uncertain the current model is at a particular robot state. More generally, the expected
+                information that a measurement provides about the model parameters is
+            </p>
+            <div class="equation">
+                \[
+                \mathbb{I}(y;\theta\mid x,D)
+                = h(x)-\mathbb{E}_{\theta\sim q(\theta\mid D)}
+                \!\left[\mathbb{H}_{y}\!\left[p(y\mid x;\theta)\right]\right].
+                \]
+            </div>
+            <p>
+                In BoxGPT, every rectangle predicts the binary measurement deterministically, so the second term is
+                zero. Predictive entropy and expected information gain are therefore equivalent for this problem.
+            </p>
+
+            <h3>Data collection is a decision-making problem</h3>
+            <p>
+                The remaining problem is how to use the information function to generate robot actions. Data collected
+                by a robot is inherently sequential, and the robot's motion is constrained by its dynamics. It cannot
+                independently sample every informative state. Its current action affects both the next measurement and
+                which measurements will be reachable afterward.
+            </p>
+            <p>
+                BoxGPT is designed to highlight these challenges and serve as a testbed for prototyping data-collection
+                policies for embodied agents. It makes model regression tractable so that the challenge lies in the
+                data-collection policy rather than the capability of the model. This exposes the role of decision-making
+                in data collection, which is often overlooked relative to model architecture.
+            </p>
+
+            <h3>The BoxGPT model</h3>
+            <p>
+                In BoxGPT, the measurement \(y\in\{\text{Positive},\text{Negative}\}\) is binary, and the predictive
+                model is a Bernoulli distribution:
+            </p>
+            <div class="equation">
+                \[
+                p(y\mid x;\theta)=
+                \begin{cases}
+                g(x;\theta), &amp; \text{if }y\text{ is Positive},\\
+                1-g(x;\theta), &amp; \text{if }y\text{ is Negative}.
+                \end{cases}
+                \]
+            </div>
+            <p>
+                The parameter \(\theta\) fully characterizes a rectangle, and \(g(x;\theta)\) indicates whether the
+                robot state is within that rectangle:
+            </p>
+            <div class="equation">
+                \[
+                g(x;\theta)=
+                \begin{cases}
+                1, &amp; x\in\operatorname{Rectangle}(\theta),\\
+                0, &amp; \text{otherwise}.
+                \end{cases}
+                \]
+            </div>
+
+            <h3>Analytical model regression</h3>
+            <p>
+                Given \(D=\{(x_i,y_i)\}_{i=1}^{N}\), define \(\Theta(D)\) as the set of rectangle parameters that
+                include every positive measurement and exclude every negative measurement. The inferred distribution is
+                uniform over this consistent set:
+            </p>
+            <div class="equation">
+                \[
+                q(\theta\mid D)\propto \mathbf{1}\!\left[\theta\in\Theta(D)\right].
+                \]
+            </div>
+            <p>
+                The environment represents this distribution with sampled candidate rectangles. In the interactive
+                demonstration, these are the red rectangles. Each new measurement removes candidates that are no longer
+                consistent with the accumulated data.
+            </p>
+
+            <h3>An intuitive uncertainty distribution</h3>
+            <p>
+                Let \(r(x)\) be the fraction of inferred rectangles that include a state \(x\):
+            </p>
+            <div class="equation">
+                \[
+                r(x)=\mathbb{P}_{\theta\sim q(\theta\mid D)}
+                \!\left[x\in\operatorname{Rectangle}(\theta)\right].
+                \]
+            </div>
+            <p>
+                The information function is therefore the binary entropy
+            </p>
+            <div class="equation">
+                \[
+                h(x)=-r(x)\log r(x)-\bigl(1-r(x)\bigr)\log\bigl(1-r(x)\bigr).
+                \]
+            </div>
+            <p>
+                A state has no uncertainty when all inferred rectangles agree on its label. It has the highest
+                uncertainty when exactly half of the rectangles include it and the other half do not. The random,
+                greedy, and ergodic policies above provide three different ways to turn this spatial information into
+                robot motion.
+            </p>
+        </article>
+
         <footer>
-            BoxGPT is developed by the Murphey Lab and released under the GNU GPL v3.0.
+            BoxGPT is developed by <a href="https://maxsun.io/">Max Muchen Sun</a> and the <a href="https://murpheylab.github.io/">Interactive and Emergent Autonomy Lab</a> at Northwestern University. It is released under the GNU GPL v3.0 license.
         </footer>
     </main>
 </body>
