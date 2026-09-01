@@ -356,21 +356,25 @@
 
             <p>
                 BoxGPT is a simplification of a general problem in embodied data collection. We are learning a
-                generative model, denoted by \(p(y\mid x;\theta)\), where \(x\) is the state of the robot, \(y\) is
+                generative model, denoted by \(p(y\mid x;\theta)\). Here, \(x\) is the state of the robot, \(y\) is
                 the variable of interest and the variable of measurement, and \(\theta\) is the parameter of the
-                model. For example, \(y\) could represent an image in a vision model.
+                model. For example, \(y\) could represent images in a vision model.
             </p>
 
             <h3>Learning from data</h3>
             <p>
-                The robot moves across the space to collect data. Each data point is denoted by
-                \(d_i=(x_i,y_i)\), and the accumulated dataset is \(D=\{d_i\}_{i=1}^{N}\). Model regression infers a
-                distribution of model parameters, denoted by \(q(\theta\mid D)\), from this dataset. Maximum likelihood
-                estimation can be considered a special case in which this distribution is a Dirac delta function.
+                The robot moves across the space to collect data. Each data point is denoted by \(d_i=(x_i,y_i)\),
+                where \(i\) is the index of the data point. The dataset is denoted by
+                \(D=\{d_i\}_{i=1}^{N}\).
             </p>
             <p>
-                Given an inferred parameter distribution, the posterior predictive distribution at a robot state
-                \(x\) is
+                The learning process, or model regression, infers a distribution of the model parameters from the
+                dataset. We denote this distribution by \(q(\theta\mid D)\). Maximum likelihood estimation can be
+                considered a special case in which \(q(\theta\mid D)\) is a Dirac delta function.
+            </p>
+            <p>
+                Given an inferred distribution of model parameters, the posterior predictive distribution at a
+                particular robot state \(x\) is
             </p>
             <div class="equation">
                 \[
@@ -379,7 +383,7 @@
                 \]
             </div>
             <p>
-                We quantify its predictive uncertainty using an information function \(h(x)\):
+                We quantify the predictive uncertainty at \(x\) using an information function \(h(x)\):
             </p>
             <div class="equation">
                 \[
@@ -388,8 +392,9 @@
             </div>
             <p>
                 where \(\mathbb{E}\) denotes expectation and \(\mathbb{H}\) denotes entropy. The information function
-                describes how uncertain the current model is at a particular robot state. More generally, the expected
-                information gain (also referred to as mutual information) that a measurement provides about the model parameters is
+                quantifies how uncertain the model is at a particular robot state. The expected information that a
+                measurement at that state provides about the model parameters is given by the conditional mutual
+                information
             </p>
             <div class="equation">
                 \[
@@ -399,31 +404,31 @@
                 \]
             </div>
             <p>
-                In BoxGPT, every rectangle predicts the binary measurement deterministically, so the second term is
-                zero. Predictive entropy and expected information gain are therefore equivalent for this problem.
+                In BoxGPT, every rectangle predicts the binary measurement deterministically. The second term is
+                therefore zero, making predictive entropy and expected information gain equivalent for this problem.
             </p>
 
             <h3>Data collection as a control problem</h3>
             <p>
-                The information function identifies where new measurements may be most informative. The problem,
-                however, is how to leverage this information to generate robot actions that acquire those measurements.
-                A robot that collects data faces unique limitations: the data is inherently collected sequentially, and
-                the robot's motion is constrained by its dynamics. BoxGPT is designed to highlight and examine these
-                challenges and serve as a testbed for prototyping data-collection policies for embodied agents.
+                The problem, however, is how to leverage the information function to generate robot actions in order to
+                acquire new data. A robot that collects data faces unique limitations. The data is inherently collected
+                sequentially, and the robot's motion is constrained by its dynamics. BoxGPT is designed to highlight
+                and examine these challenges. It serves as a testbed for prototyping data-collection policies for
+                embodied agents.
             </p>
             <p>
-                To focus on this problem, BoxGPT simplifies the general formulation until model regression is
-                analytical. This leaves the challenge entirely to the data-collection policy rather than the capability
-                of the model. Modern AI paradigms tend to overemphasize the importance of model architecture and
-                overlook the impact of data quality and, more importantly, the data-collection process itself on
-                learning performance. BoxGPT is designed to expose the importance of decision-making in data
-                collection, especially for embodied agents.
+                BoxGPT simplifies the general problem formulation to make model regression tractable. In fact, model
+                regression is analytical, leaving the challenge entirely to the data-collection policy rather than the
+                capability of the model. Modern AI paradigms tend to overemphasize the importance of model architecture
+                and overlook the impact of data quality. More importantly, they often overlook the impact of the
+                data-collection process itself on learning performance. BoxGPT is designed to expose the importance of
+                decision-making in data collection, especially for embodied agents.
             </p>
 
             <h3>The BoxGPT model</h3>
             <p>
-                In BoxGPT, the measurement \(y\in\{\text{Positive},\text{Negative}\}\) is binary, and the predictive
-                model is a Bernoulli distribution:
+                More specifically, in BoxGPT, the measurement \(y\in\{\text{Positive},\text{Negative}\}\) is binary.
+                The predictive model is represented as a Bernoulli distribution:
             </p>
             <div class="equation">
                 \[
@@ -435,8 +440,9 @@
                 \]
             </div>
             <p>
-                The parameter \(\theta\) fully characterizes a rectangle, and \(g(x;\theta)\) indicates whether the
-                robot state is within that rectangle:
+                The parameter \(\theta\) fully characterizes a rectangle through its width, height, and center
+                coordinates. The function \(g(x;\theta)\) indicates whether the robot state falls within the rectangle
+                characterized by \(\theta\):
             </p>
             <div class="equation">
                 \[
@@ -450,9 +456,10 @@
 
             <h3>Analytical model regression</h3>
             <p>
-                Given \(D=\{(x_i,y_i)\}_{i=1}^{N}\), define \(\Theta(D)\) as the set of rectangle parameters that
-                include every positive measurement and exclude every negative measurement. The inferred distribution is
-                uniform over this consistent set:
+                Following this simplification, model regression becomes analytical. Given a dataset
+                \(D=\{(x_i,y_i)\}_{i=1}^{N}\), define \(\Theta(D)\) as the set of parameters that characterize
+                rectangles containing all positive signals and none of the negative signals. The inferred distribution
+                \(q(\theta\mid D)\) is uniform over this consistent set:
             </p>
             <div class="equation">
                 \[
@@ -460,16 +467,15 @@
                 \]
             </div>
             <p>
-                The environment represents this distribution with sampled candidate rectangles. In the interactive
-                demonstration, these are the red rectangles. Each new measurement removes candidates that are no longer
-                consistent with the accumulated data.
+                In practice, BoxGPT represents this distribution using candidate rectangles sampled from the consistent
+                set. These candidate rectangles are shown in red in the interactive demonstration.
             </p>
 
             <h3>An intuitive uncertainty distribution</h3>
             <p>
-                The probability of a positive measurement at \(x\) is the posterior probability that \(x\) lies
-                within the hidden rectangle. Because each inferred rectangle predicts the measurement deterministically,
-                this probability is the fraction of inferred rectangles that include \(x\):
+                Following this simplification, the information function also has an intuitive explanation. The
+                probability of a positive measurement at \(x\) is the fraction of inferred rectangles that include
+                \(x\):
             </p>
             <div class="equation">
                 \[
@@ -481,7 +487,7 @@
             </div>
             <p>
                 The posterior predictive distribution is therefore Bernoulli with positive probability \(p_{+}(x)\).
-                Its entropy gives the information function:
+                The information function is its binary entropy:
             </p>
             <div class="equation">
                 \[
@@ -490,10 +496,8 @@
                 \]
             </div>
             <p>
-                A state has no uncertainty when all inferred rectangles agree on its label. It has the highest
-                uncertainty when exactly half of the rectangles include it and the other half do not. The random,
-                greedy, and ergodic policies above provide three different ways to turn this spatial information into
-                robot motion.
+                A state \(x\) has the highest uncertainty when exactly half of the inferred rectangles include it while
+                the other half do not.
             </p>
         </article>
 
