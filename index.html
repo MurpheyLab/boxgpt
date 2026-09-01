@@ -286,7 +286,7 @@
         </header>
 
         <section class="demo-section" aria-labelledby="demo-title">
-            <p class="eyebrow">Interactive demonstration</p>
+            <p class="eyebrow">Try it yourself</p>
             <h2 id="demo-title">Collect data and update the model</h2>
             <p class="demo-copy">
                 Move your mouse or finger to control the outlined sensor. As it moves, the sensor collects binary
@@ -361,7 +361,7 @@
                 model. For example, \(y\) could represent an image in a vision model.
             </p>
 
-            <h3>Learning from sequentially collected data</h3>
+            <h3>Learning from data</h3>
             <p>
                 The robot moves across the space to collect data. Each data point is denoted by
                 \(d_i=(x_i,y_i)\), and the accumulated dataset is \(D=\{d_i\}_{i=1}^{N}\). Model regression infers a
@@ -389,7 +389,7 @@
             <p>
                 where \(\mathbb{E}\) denotes expectation and \(\mathbb{H}\) denotes entropy. The information function
                 describes how uncertain the current model is at a particular robot state. More generally, the expected
-                information that a measurement provides about the model parameters is
+                information gain (also referred to as mutual information) that a measurement provides about the model parameters is
             </p>
             <div class="equation">
                 \[
@@ -403,18 +403,21 @@
                 zero. Predictive entropy and expected information gain are therefore equivalent for this problem.
             </p>
 
-            <h3>Data collection is a decision-making problem</h3>
+            <h3>Data collection as a control problem</h3>
             <p>
-                The remaining problem is how to use the information function to generate robot actions. Data collected
-                by a robot is inherently sequential, and the robot's motion is constrained by its dynamics. It cannot
-                independently sample every informative state. Its current action affects both the next measurement and
-                which measurements will be reachable afterward.
+                The information function identifies where new measurements may be most informative. The problem,
+                however, is how to leverage this information to generate robot actions that acquire those measurements.
+                A robot that collects data faces unique limitations: the data is inherently collected sequentially, and
+                the robot's motion is constrained by its dynamics. BoxGPT is designed to highlight and examine these
+                challenges and serve as a testbed for prototyping data-collection policies for embodied agents.
             </p>
             <p>
-                BoxGPT is designed to highlight these challenges and serve as a testbed for prototyping data-collection
-                policies for embodied agents. It makes model regression tractable so that the challenge lies in the
-                data-collection policy rather than the capability of the model. This exposes the role of decision-making
-                in data collection, which is often overlooked relative to model architecture.
+                To focus on this problem, BoxGPT simplifies the general formulation until model regression is
+                analytical. This leaves the challenge entirely to the data-collection policy rather than the capability
+                of the model. Modern AI paradigms tend to overemphasize the importance of model architecture and
+                overlook the impact of data quality and, more importantly, the data-collection process itself on
+                learning performance. BoxGPT is designed to expose the importance of decision-making in data
+                collection, especially for embodied agents.
             </p>
 
             <h3>The BoxGPT model</h3>
@@ -464,20 +467,26 @@
 
             <h3>An intuitive uncertainty distribution</h3>
             <p>
-                Let \(r(x)\) be the fraction of inferred rectangles that include a state \(x\):
+                The probability of a positive measurement at \(x\) is the posterior probability that \(x\) lies
+                within the hidden rectangle. Because each inferred rectangle predicts the measurement deterministically,
+                this probability is the fraction of inferred rectangles that include \(x\):
             </p>
             <div class="equation">
                 \[
-                r(x)=\mathbb{P}_{\theta\sim q(\theta\mid D)}
+                p_{+}(x)
+                =p(y=\text{Positive}\mid x,D)
+                =\mathbb{P}_{\theta\sim q(\theta\mid D)}
                 \!\left[x\in\operatorname{Rectangle}(\theta)\right].
                 \]
             </div>
             <p>
-                The information function is therefore the binary entropy
+                The posterior predictive distribution is therefore Bernoulli with positive probability \(p_{+}(x)\).
+                Its entropy gives the information function:
             </p>
             <div class="equation">
                 \[
-                h(x)=-r(x)\log r(x)-\bigl(1-r(x)\bigr)\log\bigl(1-r(x)\bigr).
+                h(x)=-p_{+}(x)\log p_{+}(x)
+                -\bigl(1-p_{+}(x)\bigr)\log\bigl(1-p_{+}(x)\bigr).
                 \]
             </div>
             <p>
