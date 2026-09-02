@@ -301,6 +301,7 @@
             </ul>
             <div class="demo-embed">
                 <iframe
+                    id="interactive-demo"
                     src="boxgpt_automation.html"
                     title="Interactive BoxGPT sensor demo"
                     loading="eager"
@@ -505,5 +506,25 @@
             BoxGPT is developed by <a href="https://maxsun.io/">Max Muchen Sun</a> and the <a href="https://murpheylab.github.io/">Interactive and Emergent Autonomy Lab</a> at Northwestern University. It is released under the GNU GPL v3.0 license.
         </footer>
     </main>
+
+    <script>
+        const demoFrame = document.getElementById("interactive-demo");
+        let demoResizeObserver;
+
+        function resizeDemoFrame() {
+            const demoContent = demoFrame.contentDocument?.querySelector(".demo-shell");
+            if (demoContent) {
+                demoFrame.style.height = `${Math.ceil(demoContent.getBoundingClientRect().bottom)}px`;
+            }
+        }
+
+        demoFrame.addEventListener("load", () => {
+            resizeDemoFrame();
+            demoResizeObserver?.disconnect();
+            demoResizeObserver = new ResizeObserver(resizeDemoFrame);
+            demoResizeObserver.observe(demoFrame.contentDocument.querySelector(".demo-shell"));
+        });
+        window.addEventListener("resize", resizeDemoFrame);
+    </script>
 </body>
 </html>
