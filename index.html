@@ -190,6 +190,17 @@
             line-height: 1.2;
         }
 
+        .policy-preview {
+            display: block;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            margin: 4px 0 14px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            object-fit: cover;
+            background: #fff;
+        }
+
         .notebook-card p {
             margin: 0 0 20px;
             color: var(--muted);
@@ -327,6 +338,7 @@
                 <article class="notebook-card">
                     <span class="notebook-number">01</span>
                     <h3>Random</h3>
+                    <img class="policy-preview" src="assets/boxgpt_random.gif" alt="Random policy collecting measurements" loading="lazy" decoding="async">
                     <p>Move the sensor between uniformly sampled waypoints without using model uncertainty.</p>
                     <a class="card-link" href="https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/random_walk.ipynb" target="_blank" rel="noreferrer">
                         Open in Colab ↗
@@ -336,6 +348,7 @@
                 <article class="notebook-card">
                     <span class="notebook-number">02</span>
                     <h3>Greedy</h3>
+                    <img class="policy-preview" src="assets/boxgpt_greedy.gif" alt="Greedy information-maximization policy collecting measurements" loading="lazy" decoding="async">
                     <p>Move to the point where the inferred boxes have the highest predictive uncertainty.</p>
                     <a class="card-link" href="https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/greedy_infomax.ipynb" target="_blank" rel="noreferrer">
                         Open in Colab ↗
@@ -345,6 +358,7 @@
                 <article class="notebook-card">
                     <span class="notebook-number">03</span>
                     <h3>Ergodic</h3>
+                    <img class="policy-preview" src="assets/boxgpt_ergodic.gif" alt="Ergodic policy collecting measurements" loading="lazy" decoding="async">
                     <p>Distribute the sensor trajectory proportional to the predictive uncertainty distribution.</p>
                     <a class="card-link" href="https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/ergodic_search.ipynb" target="_blank" rel="noreferrer">
                         Open in Colab ↗
