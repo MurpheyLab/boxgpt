@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="BoxGPT is a playground for embodied data collection and active localization.">
+    <meta name="description" content="BoxGPT is a playground for embodied data collection.">
     <title>BoxGPT: Embodied Data Collection</title>
 
     <script>
@@ -271,14 +271,16 @@
             <p class="eyebrow">Embodied data collection playground</p>
             <h1>BoxGPT</h1>
             <p class="lede">
-                BoxGPT is a simplified testbed for embodied data collection. A mobile binary sensor moves across a
-                planar space to locate a hidden rectangle. A measurement is positive when sampled from within the
-                rectangle and negative otherwise.
+                BoxGPT is a testbed for embodied data collection for generative models. It simplifies model regression to the extent
+                that it becomes analytical. Meanwhile, it focuses on how
+                sequential decision-making during data collection, in particular by embodied agents, affects the statistical properties
+                of the collected data, and how these properties in turn affect model performance.
             </p>
             <p class="intro-copy">
-                From the accumulated signals, BoxGPT infers a distribution of rectangles consistent with the data and
-                quantifies predictive uncertainty across the space. The task is to design a feedback control policy
-                that uses this information while accounting for sequential data collection and motion constraints.
+                A mobile binary sensor can be controlled to move across the space to locate a hidden rectangular box. A generative
+                prediction model is provided to generate samples of predicted rectangular boxes given the accumulated binary
+                measurements. You can manually control the robot or design a feedback control policy to automate the data collection
+                process.
             </p>
             <a class="intro-link" href="https://github.com/MurpheyLab/boxgpt" target="_blank" rel="noreferrer">
                 View the Gymnasium environment on GitHub ↗
@@ -289,15 +291,15 @@
             <p class="eyebrow">Try it yourself</p>
             <h2 id="demo-title">Collect data and update the model</h2>
             <p class="demo-copy">
-                Move your mouse or finger to control the outlined sensor. As it moves, the sensor collects binary
-                measurements and the model updates its inferred rectangles. Use <strong>Show Ground Truth</strong> to
-                reveal the hidden rectangle, or <strong>Enable Automation</strong> to let an ergodic controller drive
+                Move your mouse or finger to control the sensor. As it moves, the sensor collects binary
+                measurements and the model updates its inferred boxes. Use <strong>Show Ground Truth</strong> to
+                reveal the hidden box, or <strong>Enable Automation</strong> to let a feedback controller drive
                 the sensor. <strong>Reset</strong> starts a new problem.
             </p>
             <ul class="demo-key" aria-label="Interactive demo legend">
-                <li><strong>Outlined square</strong><br>Current sensor footprint</li>
+                <li><strong>Outlined square</strong><br>Current sensor state</li>
                 <li><strong>Black and white points</strong><br>Positive and negative measurements</li>
-                <li><strong>Red rectangles</strong><br>Models consistent with the accumulated data</li>
+                <li><strong>Red boxes</strong><br>Predictions of the hidden box given the accumulated data</li>
             </ul>
             <div class="demo-embed">
                 <iframe
@@ -324,8 +326,8 @@
             <div class="notebook-grid">
                 <article class="notebook-card">
                     <span class="notebook-number">01</span>
-                    <h3>Random walk</h3>
-                    <p>Move the sensor between uniformly sampled goals without using model uncertainty.</p>
+                    <h3>Random</h3>
+                    <p>Move the sensor between uniformly sampled waypoints without using model uncertainty.</p>
                     <a class="card-link" href="https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/random_walk.ipynb" target="_blank" rel="noreferrer">
                         Open in Colab ↗
                     </a>
@@ -333,8 +335,8 @@
 
                 <article class="notebook-card">
                     <span class="notebook-number">02</span>
-                    <h3>Greedy information maximization</h3>
-                    <p>Move to the point where the inferred rectangles have the highest predictive uncertainty.</p>
+                    <h3>Greedy</h3>
+                    <p>Move to the point where the inferred boxes have the highest predictive uncertainty.</p>
                     <a class="card-link" href="https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/greedy_infomax.ipynb" target="_blank" rel="noreferrer">
                         Open in Colab ↗
                     </a>
@@ -342,8 +344,8 @@
 
                 <article class="notebook-card">
                     <span class="notebook-number">03</span>
-                    <h3>Ergodic search</h3>
-                    <p>Distribute the sensor trajectory according to the full predictive uncertainty distribution.</p>
+                    <h3>Ergodic</h3>
+                    <p>Distribute the sensor trajectory proportional to the predictive uncertainty distribution.</p>
                     <a class="card-link" href="https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/ergodic_search.ipynb" target="_blank" rel="noreferrer">
                         Open in Colab ↗
                     </a>
@@ -405,7 +407,7 @@
                 \]
             </div>
             <p>
-                In BoxGPT, every rectangle predicts the binary measurement deterministically. The second term is
+                In BoxGPT, every box (rectangle) predicts the binary measurement deterministically. The second term is
                 therefore zero, making predictive entropy and expected information gain equivalent for this problem.
             </p>
 
@@ -441,15 +443,15 @@
                 \]
             </div>
             <p>
-                The parameter \(\theta\) fully characterizes a rectangle through its width, height, and center
-                coordinates. The function \(g(x;\theta)\) indicates whether the robot state falls within the rectangle
+                The parameter \(\theta\) fully characterizes a box through its width, height, and center
+                coordinates. The function \(g(x;\theta)\) indicates whether the robot state falls within the box
                 characterized by \(\theta\):
             </p>
             <div class="equation">
                 \[
                 g(x;\theta)=
                 \begin{cases}
-                1, &amp; x\in\operatorname{Rectangle}(\theta),\\
+                1, &amp; x\in\operatorname{Box}(\theta),\\
                 0, &amp; \text{otherwise}.
                 \end{cases}
                 \]
@@ -459,7 +461,7 @@
             <p>
                 Following this simplification, model regression becomes analytical. Given a dataset
                 \(D=\{(x_i,y_i)\}_{i=1}^{N}\), define \(\Theta(D)\) as the set of parameters that characterize
-                rectangles containing all positive signals and none of the negative signals. The inferred distribution
+                boxes containing all positive signals and none of the negative signals. The inferred distribution
                 \(q(\theta\mid D)\) is uniform over this consistent set:
             </p>
             <div class="equation">
@@ -468,14 +470,14 @@
                 \]
             </div>
             <p>
-                In practice, BoxGPT represents this distribution using candidate rectangles sampled from the consistent
-                set. These candidate rectangles are shown in red in the interactive demonstration.
+                In practice, BoxGPT represents this distribution using candidate boxes sampled from the consistent
+                set. These candidate boxes are shown in red in the interactive demonstration.
             </p>
 
             <h3>An intuitive uncertainty distribution</h3>
             <p>
                 Following this simplification, the information function also has an intuitive explanation. The
-                probability of a positive measurement at \(x\) is the fraction of inferred rectangles that include
+                probability of a positive measurement at \(x\) is the fraction of inferred boxes that include
                 \(x\):
             </p>
             <div class="equation">
@@ -483,7 +485,7 @@
                 p_{+}(x)
                 =p(y=\text{Positive}\mid x,D)
                 =\mathbb{P}_{\theta\sim q(\theta\mid D)}
-                \!\left[x\in\operatorname{Rectangle}(\theta)\right].
+                \!\left[x\in\operatorname{Box}(\theta)\right].
                 \]
             </div>
             <p>
@@ -497,7 +499,7 @@
                 \]
             </div>
             <p>
-                A state \(x\) has the highest uncertainty when exactly half of the inferred rectangles include it while
+                A state \(x\) has the highest uncertainty when exactly half of the inferred boxes include it while
                 the other half do not.
             </p>
         </article>
