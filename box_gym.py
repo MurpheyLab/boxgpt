@@ -147,9 +147,9 @@ class BoxGym(gym.Env):
         )
         self.timestep += 1
 
-        terminated = self.uncertainty_score < self.uncertainty_threshold
+        done = self.uncertainty_score < self.uncertainty_threshold
         reward = -self.uncertainty_score
-        return self._observation(current), reward, terminated, False, self._info()
+        return self._observation(current), reward, done, False, self._info()
 
     def _sample_rectangle(self) -> np.ndarray:
         center = self.np_random.uniform(0.2, 0.8, size=2)
@@ -279,7 +279,7 @@ class BoxGym(gym.Env):
     def _info(self) -> dict[str, Any]:
         return {
             "ground_truth_rectangle": self.rect.copy(),
-            "uncertainty_score": self.uncertainty_score,
+            "uncertainty": self.uncertainty_score,
             "timestep": self.timestep,
         }
 

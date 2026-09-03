@@ -19,9 +19,11 @@ You will need implement a feedback control policy given the accumulated signals 
 
 Each notebook downloads the current `box_gym.py` directly from GitHub and implements its own controller.
 
-- [Random walk](https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/random_walk.ipynb)
-- [Greedy information maximization](https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/greedy_infomax.ipynb)
-- [Ergodic search](https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/ergodic_search.ipynb)
+| *Policy* | *Code* |
+| :---: | :---: |
+| **Random walk** <br> <img src="assets/boxgpt_random.gif" alt="Random-walk policy" width="200"/> | [[Jupyter Notebook]](notebooks/random_walk.ipynb) <br> [[Google Colab]](https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/random_walk.ipynb) |
+| **Greedy information maximization** <br> <img src="assets/boxgpt_greedy.gif" alt="Greedy information-maximization policy" width="200"/> | [[Jupyter Notebook]](notebooks/greedy_infomax.ipynb) <br> [[Google Colab]](https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/greedy_infomax.ipynb) |
+| **Ergodic search** <br> <img src="assets/boxgpt_ergodic.gif" alt="Ergodic-search policy" width="200"/> | [[Jupyter Notebook]](notebooks/ergodic_search.ipynb) <br> [[Google Colab]](https://colab.research.google.com/github/MurpheyLab/boxgpt/blob/main/notebooks/ergodic_search.ipynb) |
 
 
 ## Using BoxGPT
@@ -53,7 +55,7 @@ env.close()
 
 Actions are two-dimensional velocities. The environment clips their Euclidean norm to `max_velocity` and updates the sensor position using `sensor_position += action * dt`.
 
-The observation contains the sensor position, current and historical binary measurements, candidate rectangles, and a spatial uncertainty grid. Ground truth is excluded from the observation and provided through `info["ground_truth_rectangle"]` for evaluation. The scalar `info["uncertainty_score"]` reports the largest coordinate variance across the candidate rectangles.
+The observation contains the sensor position, current and historical binary measurements, candidate rectangles, and a spatial uncertainty grid. Ground truth is excluded from the observation and provided through `info["ground_truth_rectangle"]` for evaluation. The scalar `info["uncertainty"]` reports the largest coordinate variance across the candidate rectangles.
 
 `render()` returns an RGB frame. `render(diagnostics=True)` adds the uncertainty distribution and ground-truth rectangle. Rendering does not open a window or write a file.
 
