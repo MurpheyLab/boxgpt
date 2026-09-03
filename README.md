@@ -1,5 +1,9 @@
 # BoxGPT
 
+<p align="center">
+  <img src="assets/boxgpt_intro_montage.gif" alt="BoxGPT policy montage" width="250"/>
+</p>
+
 BoxGPT is a Gymnasium-style environment for embodied decision-making of sequential data collection. It is distributed as single Python file: [`box_gym.py`](box_gym.py). To use it in your project, download the file and import it directly.
 
 *This README file focuses on the code documentation of the environment, for detailed description of the task and the mathematical formulation, please visit the [**project homepage**](https://murpheylab.github.io/boxgpt/).*
