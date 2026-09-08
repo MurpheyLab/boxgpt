@@ -561,9 +561,6 @@
             envCanvas.height = Math.floor(cssSize * dpr);
 
             envCtx.setTransform((dpr * cssSize) / envSize, 0, 0, (dpr * cssSize) / envSize, 0, 0);
-
-            offscreenCanvas.width = envSize;
-            offscreenCanvas.height = envSize;
         }
 
         window.addEventListener("resize", () => {
@@ -575,7 +572,7 @@
         // Environment generation
         // ============================================================
         function generateEnvironment() {
-            offscreenCtx.fillStyle = "#F0F0F0";
+            offscreenCtx.fillStyle = "#fff";
             offscreenCtx.fillRect(0, 0, envSize, envSize);
 
             const minHalfWidth = 25;
@@ -597,7 +594,7 @@
                 height: 2 * halfHeight
             };
 
-            offscreenCtx.fillStyle = "grey";
+            offscreenCtx.fillStyle = "rgba(128, 128, 128, 0.45)";
             offscreenCtx.fillRect(rect.x, rect.y, rect.width, rect.height);
 
             sensorDots = [];
@@ -610,12 +607,12 @@
         // Drawing
         // ============================================================
         function refreshMainCanvas() {
+            envCtx.clearRect(0, 0, envSize, envSize);
+            envCtx.fillStyle = "white";
+            envCtx.fillRect(0, 0, envSize, envSize);
+
             if (showBackground) {
                 envCtx.drawImage(offscreenCanvas, 0, 0);
-            } else {
-                envCtx.clearRect(0, 0, envSize, envSize);
-                envCtx.fillStyle = "white";
-                envCtx.fillRect(0, 0, envSize, envSize);
             }
 
             sensorDots.forEach(dot => {

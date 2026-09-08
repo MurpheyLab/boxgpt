@@ -94,6 +94,10 @@
             border-top: 2px solid var(--ink);
         }
 
+        .demo-section + .demo-section {
+            margin-top: 40px;
+        }
+
         .demo-copy {
             max-width: 720px;
             margin: 10px 0 18px;
@@ -323,6 +327,30 @@
             </div>
         </section>
 
+        <section class="demo-section" aria-labelledby="trajectory-title">
+            <p class="eyebrow">Try it yourself</p>
+            <h2 id="trajectory-title">Plan before you measure</h2>
+            <p class="demo-copy">
+                The model is intialized with a small set of measurements, but more data is needed. Starting from
+                the current sensor position, draw one continuous trajectory with your mouse or finger.
+                Measurements along the path stay hidden until you select <strong>Run Trajectory</strong>.
+            </p>
+            <ul class="demo-key" aria-label="Trajectory challenge legend">
+                <li><strong>Black and white points</strong><br>Measurements already available to you</li>
+                <li><strong>Red boxes</strong><br>Predictions consistent with the available data</li>
+                <li><strong>Blue line</strong><br>Your planned data-collection trajectory</li>
+            </ul>
+            <div class="demo-embed">
+                <iframe
+                    id="trajectory-demo"
+                    src="boxgpt_drawing.html"
+                    title="BoxGPT data-collection trajectory challenge"
+                    loading="lazy"
+                    scrolling="no"
+                ></iframe>
+            </div>
+        </section>
+
         <section class="resources" aria-labelledby="resources-title">
             <div class="resources-header">
                 <div>
@@ -524,23 +552,27 @@
     </main>
 
     <script>
-        const demoFrame = document.getElementById("interactive-demo");
-        let demoResizeObserver;
+        document.querySelectorAll(".demo-embed iframe").forEach(frame => {
+            let observer;
 
-        function resizeDemoFrame() {
-            const demoContent = demoFrame.contentDocument?.querySelector(".demo-shell");
-            if (demoContent) {
-                demoFrame.style.height = `${Math.ceil(demoContent.getBoundingClientRect().bottom)}px`;
+            function resizeFrame() {
+                const demoContent = frame.contentDocument?.querySelector(".demo-shell");
+                if (demoContent) {
+                    frame.style.height = `${Math.ceil(demoContent.getBoundingClientRect().bottom)}px`;
+                }
             }
-        }
 
-        demoFrame.addEventListener("load", () => {
-            resizeDemoFrame();
-            demoResizeObserver?.disconnect();
-            demoResizeObserver = new ResizeObserver(resizeDemoFrame);
-            demoResizeObserver.observe(demoFrame.contentDocument.querySelector(".demo-shell"));
+            frame.addEventListener("load", () => {
+                resizeFrame();
+                observer?.disconnect();
+                const demoContent = frame.contentDocument?.querySelector(".demo-shell");
+                if (demoContent) {
+                    observer = new ResizeObserver(resizeFrame);
+                    observer.observe(demoContent);
+                }
+            });
+            window.addEventListener("resize", resizeFrame);
         });
-        window.addEventListener("resize", resizeDemoFrame);
     </script>
 </body>
 </html>
