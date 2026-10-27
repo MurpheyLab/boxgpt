@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+message: "If you use BoxGPT in your research, please cite the paper in preferred-citation."
+title: "BoxGPT"
+type: software
+authors:
+  - family-names: Sun
+    given-names: Max Muchen
+repository-code: "https://github.com/MurpheyLab/boxgpt"
+url: "https://murpheylab.github.io/boxgpt/"
+license: "GPL-3.0-only"
+preferred-citation:
+  type: generic
+  title: "Ergodic Control and Controlled Diffusion for Robot Learning: Review and Tutorial"
+  authors:
+    - family-names: Sun
+      given-names: Max Muchen
+    - family-names: Bilaloglu
+      given-names: Cem
+    - family-names: Rao
+      given-names: Ananya
+    - family-names: Ivic
+      given-names: Stefan
+    - family-names: Sartoretti
+      given-names: Guillaume
+    - family-names: Fitzsimons
+      given-names: Kathleen
+    - family-names: Abraham
+      given-names: Ian
+    - family-names: Calinon
+      given-names: Sylvain
+    - family-names: Murphey
+      given-names: Todd
+  year: 2026
+  status: preprint
+  url: "https://arxiv.org/abs/2609.13295"
+  identifiers:
+    - type: other
+      value: "arXiv:2609.13295"

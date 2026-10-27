@@ -97,13 +97,13 @@ If you use BoxGPT in your research, please cite:
 
 ```bibtex
 @misc{sun2026ergodiccontrolcontrolleddiffusion,
-  title={Ergodic Control and Controlled Diffusion for Robot Learning: Review and Tutorial},
-  author={Max Muchen Sun and Cem Bilaloglu and Ananya Rao and Stefan Ivic and Guillaume Sartoretti and Kathleen Fitzsimons and Ian Abraham and Sylvain Calinon and Todd Murphey},
-  year={2026},
-  eprint={2609.13295},
-  archivePrefix={arXiv},
-  primaryClass={cs.RO},
-  url={https://arxiv.org/abs/2609.13295},
+    title={Ergodic Control and Controlled Diffusion for Robot Learning: Review and Tutorial},
+    author={Max Muchen Sun and Cem Bilaloglu and Ananya Rao and Stefan Ivic and Guillaume Sartoretti and Kathleen Fitzsimons and Ian Abraham and Sylvain Calinon and Todd Murphey},
+    year={2026},
+    eprint={2609.13295},
+    archivePrefix={arXiv},
+    primaryClass={cs.RO},
+    url={https://arxiv.org/abs/2609.13295},
 }
 ```
 
