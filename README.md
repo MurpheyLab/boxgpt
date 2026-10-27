@@ -6,6 +6,8 @@
 
 BoxGPT is a Gymnasium-style environment for embodied decision-making of sequential data collection. It is distributed as single Python file: [`box_gym.py`](box_gym.py). To use it in your project, download the file and import it directly.
 
+BoxGPT is developed as part of the paper [*Ergodic Control and Controlled Diffusion for Robot Learning: Review and Tutorial*](https://arxiv.org/abs/2609.13295).
+
 *This README file focuses on the code documentation of the environment, for detailed description of the task and the mathematical formulation, please visit the [**project homepage**](https://murpheylab.github.io/boxgpt/).*
 
 ## Task description
@@ -87,6 +89,22 @@ env = BoxGym(
     max_velocity=0.5,
     candidate_count=200,
 )
+```
+
+## Citation
+
+If you use BoxGPT in your research, please cite:
+
+```bibtex
+@misc{sun2026ergodiccontrolcontrolleddiffusion,
+  title={Ergodic Control and Controlled Diffusion for Robot Learning: Review and Tutorial},
+  author={Max Muchen Sun and Cem Bilaloglu and Ananya Rao and Stefan Ivic and Guillaume Sartoretti and Kathleen Fitzsimons and Ian Abraham and Sylvain Calinon and Todd Murphey},
+  year={2026},
+  eprint={2609.13295},
+  archivePrefix={arXiv},
+  primaryClass={cs.RO},
+  url={https://arxiv.org/abs/2609.13295},
+}
 ```
 
 ## License
